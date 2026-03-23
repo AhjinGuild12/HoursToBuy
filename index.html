@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HoursToBuy — What does it really cost?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0d10;
+    --bg-surface: #15171c;
+    --bg-input: #1a1d23;
+    --text: #e8e6e3;
+    --text-secondary: #908c85;
+    --text-muted: #585550;
+    --accent: #c7553b;
+    --accent-dim: #a3452f;
+    --border: #28292e;
+    --severity-low: #5b9a7c;
+    --severity-mid: #b5944a;
+    --severity-high: #c27442;
+    --severity-critical: #c7553b;
+    --font-display: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-display);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Subtle grain texture — fixed, never on scroll container */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  .page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 80px 24px 120px;
+  }
+
+  /* Asymmetric container — content offset left on desktop */
+  .content {
+    max-width: 480px;
+  }
+
+  @media (min-width: 768px) {
+    .page {
+      padding: 120px 80px 160px;
+    }
+    .content {
+      max-width: 520px;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .page {
+      padding: 140px 0 200px;
+      padding-left: 12vw;
+    }
+  }
+
+  /* ---- Header ---- */
+  .header {
+    margin-bottom: 56px;
+  }
+
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    line-height: 1.1;
+  }
+
+  .header .tagline {
+    font-size: 15px;
+    font-weight: 300;
+    color: var(--text-muted);
+    margin-top: 8px;
+    letter-spacing: 0.01em;
+  }
+
+  @media (min-width: 768px) {
+    .header h1 {
+      font-size: 36px;
+    }
+  }
+
+  /* ---- Form ---- */
+  .calculator-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-bottom: 48px;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .input-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .input-wrapper {
+    position: relative;
+  }
+
+  .input-wrapper .currency-symbol {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .input-group input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px 18px 44px;
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.25s var(--ease-out);
+  }
+
+  .input-group input:focus {
+    border-color: var(--accent);
+  }
+
+  .input-group input::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .input-error {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--accent);
+    min-height: 16px;
+  }
+
+  .calculate-btn {
+    background: var(--accent);
+    color: var(--text);
+    border: none;
+    border-radius: 12px;
+    padding: 16px 32px;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.25s var(--ease-out), transform 0.1s;
+    align-self: flex-start;
+  }
+
+  .calculate-btn:hover {
+    background: var(--accent-dim);
+  }
+
+  .calculate-btn:active {
+    transform: scale(0.97) translateY(1px);
+  }
+
+  /* ---- Examples ---- */
+  .examples {
+    margin-bottom: 56px;
+  }
+
+  .examples-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 12px;
+  }
+
+  .example-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .example-chip {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    line-height: 1.3;
+  }
+
+  .example-chip:hover {
+    border-color: var(--text-secondary);
+    color: var(--text);
+  }
+
+  .example-chip .chip-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text);
+    margin-right: 4px;
+  }
+
+  .examples-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .category-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .category-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  /* ---- Divider ---- */
+  .divider {
+    width: 48px;
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 48px;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .divider.visible {
+    opacity: 1;
+  }
+
+  /* ---- Results ---- */
+  .results {
+    display: none;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .results.visible {
+    display: flex;
+  }
+
+  /* Hero number */
+  .result-hero {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+  }
+
+  .result-hero.appear {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .result-hero .big-number {
+    font-family: var(--font-mono);
+    font-size: 56px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .result-hero .big-unit {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    margin-left: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .result-hero .breakdown {
+    font-size: 15px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+
+  .result-hero .breakdown strong {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  @media (min-width: 768px) {
+    .result-hero .big-number {
+      font-size: 72px;
+    }
+  }
+
+  /* ---- Bars ---- */
+  .bars-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .bar-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bar-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .bar-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .bar-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .bar-track {
+    background: var(--bg-input);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 1s var(--ease-out);
+  }
+
+  .bar-fill.bar-hours {
+    background: var(--severity-low);
+    transition-delay: 0.1s;
+  }
+
+  .bar-fill.bar-days {
+    background: var(--severity-mid);
+    transition-delay: 0.25s;
+  }
+
+  .bar-fill.bar-weeks {
+    background: var(--severity-critical);
+    transition-delay: 0.4s;
+  }
+
+  /* ---- Day Blocks ---- */
+  .blocks-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .blocks-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .blocks-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .day-block {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.25s, transform 0.35s var(--ease-spring);
+  }
+
+  .day-block.appear {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .day-block.half {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .day-block.half::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 100%;
+    background: var(--bg);
+    border-radius: 0 4px 4px 0;
+  }
+
+  .blocks-overflow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .blocks-overflow.appear {
+    opacity: 1;
+  }
+
+  /* ---- Verdict ---- */
+  .verdict {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 24px 0;
+    border-top: 1px solid var(--border);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.4s var(--ease-out), transform 0.4s var(--ease-out);
+  }
+
+  .verdict.appear {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .verdict-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .verdict-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .verdict-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 2px;
+  }
+
+  .verdict-label {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .verdict-subtext {
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--text-secondary);
+  }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .bar-fill,
+    .day-block,
+    .verdict,
+    .blocks-overflow,
+    .result-hero,
+    .divider {
+      transition: none;
+    }
+  }
+
+  /* ---- Small screens ---- */
+  @media (max-width: 380px) {
+    .header h1 { font-size: 24px; }
+    .result-hero .big-number { font-size: 44px; }
+    .input-group input { font-size: 18px; padding: 16px 16px 16px 38px; }
+    .day-block { width: 20px; height: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+<div class="content">
+
+  <header class="header">
+    <h1>HoursToBuy</h1>
+    <p class="tagline">What does it really cost you?</p>
+  </header>
+
+  <form class="calculator-form" id="calcForm">
+    <div class="input-group">
+      <label for="wage">Hourly wage</label>
+      <div class="input-wrapper">
+        <span class="currency-symbol">$</span>
+        <input type="text" id="wage" inputmode="decimal" placeholder="15.00" autocomplete="off">
+      </div>
+      <div class="input-error" id="wageError"></div>
+    </div>
+
+    <div class="input-group">
+      <label for="price">Item price</label>
+      <div class="input-wrapper">
+        <span class="currency-symbol">$</span>
+        <input type="text" id="price" inputmode="decimal" placeholder="0.00" autocomplete="off">
+      </div>
+      <div class="input-error" id="priceError"></div>
+    </div>
+
+    <button type="submit" class="calculate-btn">Calculate</button>
+  </form>
+
+  <div class="examples" id="examples">
+    <div class="examples-label">Popular items</div>
+    <div class="examples-categories" id="examplesContainer"></div>
+  </div>
+
+  <div class="divider" id="divider"></div>
+
+  <div class="results" id="results">
+    <div class="result-hero" id="resultHero">
+      <div>
+        <span class="big-number" id="bigNumber"></span>
+        <span class="big-unit">hours</span>
+      </div>
+      <div class="breakdown" id="breakdown"></div>
+    </div>
+
+    <div class="bars-section">
+      <div class="bar-row">
+        <div class="bar-meta">
+          <span class="bar-label">Hours</span>
+          <span class="bar-value" id="barHoursValue"></span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-hours" id="barHours"></div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-meta">
+          <span class="bar-label">Work days</span>
+          <span class="bar-value" id="barDaysValue"></span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-days" id="barDays"></div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-meta">
+          <span class="bar-label">Work weeks</span>
+          <span class="bar-value" id="barWeeksValue"></span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-weeks" id="barWeeks"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="blocks-section">
+      <div class="blocks-label">Each block = 1 work day</div>
+      <div class="blocks-grid" id="blocksGrid"></div>
+      <div class="blocks-overflow" id="blocksOverflow"></div>
+    </div>
+
+    <div class="verdict" id="verdict">
+      <div class="verdict-icon" id="verdictIcon"></div>
+      <div class="verdict-text">
+        <div class="verdict-label" id="verdictLabel"></div>
+        <div class="verdict-subtext" id="verdictSubtext"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+  const MAX_HOURS_FILL = 80;
+  const MAX_BLOCKS = 30;
+  const HOURS_PER_DAY = 8;
+  const DAYS_PER_WEEK = 5;
+  const BLOCK_STAGGER_MS = 50;
+
+  /* SVG icons — no emojis per Anti-Emoji Policy */
+  const ICONS = {
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    thumbsUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 22V11l5-9a2 2 0 0 1 2 2v4h5.5a2 2 0 0 1 2 2.3l-1.2 8a2 2 0 0 1-2 1.7H7z"/><path d="M3 11h4v11H3z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="8" y1="6" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="18"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.2 1.7 18a2 2 0 0 0 1.7 3h17.2a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c.5 3.5-1 6-3 8 2-1 4 0 5 2-1-2 0-4 2-5-.5 2 1 4 1 6a7 7 0 1 1-10-8c1.5-1 3-3.5 5-3z"/></svg>',
+  };
+
+  /* ============================================================
+     POPULAR ITEMS CONFIG
+     Add items here — one line per item. Category order on screen
+     follows first-appearance order in this array.
+     ============================================================ */
+  const POPULAR_ITEMS = [
+    // -- Apple --
+    { name: 'AirPods',           price: 249,     category: 'Apple' },
+    { name: 'Apple Watch',       price: 399,     category: 'Apple' },
+    { name: 'iPhone 16',         price: 999,     category: 'Apple' },
+    { name: 'iPad Pro',          price: 1099,    category: 'Apple' },
+    { name: 'MacBook Air',       price: 1199,    category: 'Apple' },
+    { name: 'MacBook Pro',       price: 1999,    category: 'Apple' },
+    { name: 'Vision Pro',        price: 3499,    category: 'Apple' },
+
+    // -- Daily --
+    { name: 'Coffee',            price: 5.50,    category: 'Daily' },
+    { name: 'Lunch out',         price: 15,      category: 'Daily' },
+    { name: 'Streaming sub',     price: 15.99,   category: 'Daily' },
+    { name: 'Haircut',           price: 35,      category: 'Daily' },
+    { name: 'Gym membership',    price: 50,      category: 'Daily' },
+    { name: 'Groceries (wk)',    price: 150,     category: 'Daily' },
+
+    // -- Tech --
+    { name: 'Mechanical KB',     price: 175,     category: 'Tech' },
+    { name: 'Nintendo Switch',   price: 349,     category: 'Tech' },
+    { name: 'PS5',               price: 499,     category: 'Tech' },
+    { name: '4K Monitor',        price: 599,     category: 'Tech' },
+    { name: 'LG OLED 55"',      price: 1299,    category: 'Tech' },
+
+    // -- Transport --
+    { name: 'Monthly transit',   price: 100,     category: 'Transport' },
+    { name: 'Flight (domestic)', price: 350,     category: 'Transport' },
+    { name: 'E-bike',            price: 1800,    category: 'Transport' },
+    { name: 'Used car',          price: 15000,   category: 'Transport' },
+    { name: 'New car',           price: 35000,   category: 'Transport' },
+  ];
+
+  const VERDICTS = [
+    { maxHours: 4,        icon: 'check',    label: 'No brainer',        bg: 'var(--severity-low)',      color: '#1a2e22', subtext: 'Less than half a day of work' },
+    { maxHours: 16,       icon: 'thumbsUp', label: 'Fair trade',        bg: '#3a6b5a',                  color: '#e8e6e3', subtext: 'A couple days of your time' },
+    { maxHours: 40,       icon: 'pause',    label: 'Sleep on it',       bg: 'var(--severity-mid)',      color: '#1a1808', subtext: 'That\'s a full work week' },
+    { maxHours: 80,       icon: 'alert',    label: 'Think twice',       bg: 'var(--severity-high)',     color: '#1a1008', subtext: 'Over a week of your working life' },
+    { maxHours: Infinity, icon: 'flame',    label: 'Major commitment',  bg: 'var(--severity-critical)', color: '#1a0c08', subtext: 'Multiple weeks of hard work' },
+  ];
+
+  /* --- Helpers --- */
+
+  function parseInput(raw) {
+    const cleaned = raw.replace(/[$,\s]/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? null : num;
+  }
+
+  function formatNumber(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 10_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+    if (n >= 100) return Math.round(n).toLocaleString();
+    if (n === 0) return '0';
+    if (n < 0.1) return n.toFixed(2);
+    if (n < 1) return n.toFixed(1);
+    return n % 1 === 0 ? n.toString() : n.toFixed(1);
+  }
+
+  function formatPrice(n) {
+    if (n >= 10_000) return '$' + (n / 1_000).toFixed(0) + 'K';
+    if (n >= 1_000) return '$' + n.toLocaleString();
+    if (n % 1 === 0) return '$' + n;
+    return '$' + n.toFixed(2);
+  }
+
+  function getVerdict(hours) {
+    return VERDICTS.find(v => hours < v.maxHours) || VERDICTS[VERDICTS.length - 1];
+  }
+
+  function getBlockColor(index, total) {
+    const ratio = total <= 1 ? 0 : index / (total - 1);
+    if (ratio < 0.3) return 'var(--severity-low)';
+    if (ratio < 0.6) return 'var(--severity-mid)';
+    if (ratio < 0.85) return 'var(--severity-high)';
+    return 'var(--severity-critical)';
+  }
+
+  /* --- Popular Items Renderer --- */
+
+  function renderPopularItems() {
+    const container = document.getElementById('examplesContainer');
+    const categoryOrder = [];
+    const grouped = {};
+
+    POPULAR_ITEMS.forEach(item => {
+      if (!grouped[item.category]) {
+        grouped[item.category] = [];
+        categoryOrder.push(item.category);
+      }
+      grouped[item.category].push(item);
+    });
+
+    categoryOrder.forEach(category => {
+      const group = document.createElement('div');
+      group.className = 'category-group';
+
+      const label = document.createElement('div');
+      label.className = 'category-label';
+      label.textContent = category;
+      group.appendChild(label);
+
+      const chipsRow = document.createElement('div');
+      chipsRow.className = 'example-chips';
+
+      grouped[category].forEach(item => {
+        const chip = document.createElement('div');
+        chip.className = 'example-chip';
+        chip.setAttribute('data-price', item.price);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'chip-name';
+        nameSpan.textContent = item.name;
+
+        chip.appendChild(nameSpan);
+        chip.appendChild(document.createTextNode(formatPrice(item.price)));
+        chipsRow.appendChild(chip);
+      });
+
+      group.appendChild(chipsRow);
+      container.appendChild(group);
+    });
+  }
+
+  /* --- Validation --- */
+
+  function validate() {
+    const wageRaw = document.getElementById('wage').value;
+    const priceRaw = document.getElementById('price').value;
+    const wageErr = document.getElementById('wageError');
+    const priceErr = document.getElementById('priceError');
+    let valid = true;
+
+    wageErr.textContent = '';
+    priceErr.textContent = '';
+
+    const wage = parseInput(wageRaw);
+    const price = parseInput(priceRaw);
+
+    if (wageRaw.trim() === '') {
+      wageErr.textContent = 'Enter your hourly wage';
+      valid = false;
+    } else if (wage === null) {
+      wageErr.textContent = 'Enter a valid number';
+      valid = false;
+    } else if (wage <= 0) {
+      wageErr.textContent = 'Wage must be greater than 0';
+      valid = false;
+    }
+
+    if (priceRaw.trim() === '') {
+      priceErr.textContent = 'Enter a price';
+      valid = false;
+    } else if (price === null) {
+      priceErr.textContent = 'Enter a valid number';
+      valid = false;
+    } else if (price < 0) {
+      priceErr.textContent = 'Price can\'t be negative';
+      valid = false;
+    }
+
+    return valid ? { wage, price } : null;
+  }
+
+  /* --- Render --- */
+
+  function renderHero(hours) {
+    const days = hours / HOURS_PER_DAY;
+    const weeks = days / DAYS_PER_WEEK;
+
+    document.getElementById('bigNumber').textContent = formatNumber(hours);
+    document.getElementById('breakdown').innerHTML =
+      `That's <strong>${formatNumber(days)} work days</strong> or <strong>${formatNumber(weeks)} weeks</strong> of your life.`;
+
+    const hero = document.getElementById('resultHero');
+    hero.classList.remove('appear');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => hero.classList.add('appear'));
+    });
+  }
+
+  function renderBars(hours) {
+    const fillRatio = Math.min(hours / MAX_HOURS_FILL, 1);
+    const days = hours / HOURS_PER_DAY;
+    const weeks = days / DAYS_PER_WEEK;
+
+    document.getElementById('barHoursValue').textContent = formatNumber(hours) + 'h';
+    document.getElementById('barDaysValue').textContent = formatNumber(days) + 'd';
+    document.getElementById('barWeeksValue').textContent = formatNumber(weeks) + 'w';
+
+    const barEls = [
+      document.getElementById('barHours'),
+      document.getElementById('barDays'),
+      document.getElementById('barWeeks'),
+    ];
+    barEls.forEach(el => el.style.transform = 'scaleX(0)');
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        barEls.forEach(el => {
+          el.style.transform = `scaleX(${fillRatio})`;
+        });
+      });
+    });
+  }
+
+  function renderBlocks(hours) {
+    const grid = document.getElementById('blocksGrid');
+    const overflow = document.getElementById('blocksOverflow');
+    grid.innerHTML = '';
+    overflow.textContent = '';
+    overflow.classList.remove('appear');
+
+    const totalDays = hours / HOURS_PER_DAY;
+    const fullDays = Math.floor(totalDays);
+    const hasHalf = totalDays - fullDays >= 0.25;
+    const displayFull = Math.min(fullDays, MAX_BLOCKS);
+    const totalBlocks = displayFull + (hasHalf && displayFull < MAX_BLOCKS ? 1 : 0);
+
+    for (let i = 0; i < displayFull; i++) {
+      const block = document.createElement('div');
+      block.className = 'day-block';
+      block.style.backgroundColor = getBlockColor(i, totalBlocks);
+      grid.appendChild(block);
+      setTimeout(() => block.classList.add('appear'), i * BLOCK_STAGGER_MS);
+    }
+
+    if (hasHalf && displayFull < MAX_BLOCKS) {
+      const half = document.createElement('div');
+      half.className = 'day-block half';
+      half.style.backgroundColor = getBlockColor(displayFull, totalBlocks);
+      grid.appendChild(half);
+      setTimeout(() => half.classList.add('appear'), displayFull * BLOCK_STAGGER_MS);
+    }
+
+    if (fullDays >= MAX_BLOCKS) {
+      const extra = Math.ceil(totalDays) - MAX_BLOCKS;
+      overflow.textContent = `+${extra} more day${extra !== 1 ? 's' : ''}`;
+      setTimeout(() => overflow.classList.add('appear'), totalBlocks * BLOCK_STAGGER_MS);
+    }
+  }
+
+  function renderVerdict(hours) {
+    const v = getVerdict(hours);
+    const el = document.getElementById('verdict');
+    const days = hours / HOURS_PER_DAY;
+    const weeks = days / DAYS_PER_WEEK;
+
+    const iconEl = document.getElementById('verdictIcon');
+    iconEl.innerHTML = ICONS[v.icon];
+    iconEl.style.background = v.bg;
+    iconEl.style.color = v.color;
+
+    const label = document.getElementById('verdictLabel');
+    label.textContent = v.label;
+    label.style.color = v.bg;
+
+    let subtext = v.subtext;
+    if (hours >= 80) {
+      subtext = `That's ${formatNumber(weeks)} weeks of your working life`;
+    } else if (hours >= 40) {
+      subtext = `That's over ${Math.floor(weeks)} week${Math.floor(weeks) !== 1 ? 's' : ''} of your working life`;
+    }
+    document.getElementById('verdictSubtext').textContent = subtext;
+
+    el.classList.remove('appear');
+    const delay = Math.min(Math.ceil(days), MAX_BLOCKS) * BLOCK_STAGGER_MS + 200;
+    setTimeout(() => el.classList.add('appear'), delay);
+  }
+
+  function calculate(wage, price) {
+    const hours = price / wage;
+    const results = document.getElementById('results');
+    const divider = document.getElementById('divider');
+
+    renderHero(hours);
+    renderBars(hours);
+    renderBlocks(hours);
+    renderVerdict(hours);
+
+    divider.classList.add('visible');
+    results.classList.add('visible');
+    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* --- Events --- */
+
+  renderPopularItems();
+
+  document.getElementById('calcForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = validate();
+    if (data) calculate(data.wage, data.price);
+  });
+
+  document.getElementById('examplesContainer').addEventListener('click', (e) => {
+    const chip = e.target.closest('.example-chip');
+    if (!chip) return;
+
+    const priceVal = chip.getAttribute('data-price');
+    document.getElementById('price').value = priceVal;
+
+    const wageInput = document.getElementById('wage');
+    if (!wageInput.value.trim()) {
+      wageInput.focus();
+    } else {
+      document.getElementById('calcForm').requestSubmit();
+    }
+  });
+</script>
+</body>
+</html>
