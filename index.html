@@ -264,6 +264,42 @@
     letter-spacing: 0.12em;
   }
 
+  /* ---- Wage toggle ---- */
+  .wage-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 8px;
+  }
+
+  .wage-toggle button {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+
+  .wage-toggle button:first-child {
+    border-radius: 6px 0 0 6px;
+    border-right: none;
+  }
+
+  .wage-toggle button:last-child {
+    border-radius: 0 6px 6px 0;
+  }
+
+  .wage-toggle button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
   /* ---- Divider ---- */
   .divider {
     width: 48px;
@@ -556,7 +592,11 @@
 
   <form class="calculator-form" id="calcForm">
     <div class="input-group">
-      <label for="wage">Hourly wage</label>
+      <label for="wage" id="wageLabel">Hourly wage</label>
+      <div class="wage-toggle" id="wageToggle">
+        <button type="button" class="active" data-mode="hourly">Hourly</button>
+        <button type="button" data-mode="annual">Annual</button>
+      </div>
       <div class="input-wrapper">
         <span class="currency-symbol">$</span>
         <input type="text" id="wage" inputmode="decimal" placeholder="15.00" autocomplete="off">
@@ -641,6 +681,7 @@
 </div>
 
 <script>
+  const HOURS_PER_YEAR = 2080; /* 40 hrs/wk x 52 wks */
   const MAX_HOURS_FILL = 80;
   const MAX_BLOCKS = 30;
   const HOURS_PER_DAY = 8;
@@ -787,28 +828,38 @@
 
   /* --- Validation --- */
 
+  function getWageMode() {
+    return document.querySelector('.wage-toggle button.active').getAttribute('data-mode');
+  }
+
   function validate() {
     const wageRaw = document.getElementById('wage').value;
     const priceRaw = document.getElementById('price').value;
     const wageErr = document.getElementById('wageError');
     const priceErr = document.getElementById('priceError');
+    const isAnnual = getWageMode() === 'annual';
     let valid = true;
 
     wageErr.textContent = '';
     priceErr.textContent = '';
 
-    const wage = parseInput(wageRaw);
+    let wage = parseInput(wageRaw);
     const price = parseInput(priceRaw);
 
     if (wageRaw.trim() === '') {
-      wageErr.textContent = 'Enter your hourly wage';
+      wageErr.textContent = isAnnual ? 'Enter your annual salary' : 'Enter your hourly wage';
       valid = false;
     } else if (wage === null) {
       wageErr.textContent = 'Enter a valid number';
       valid = false;
     } else if (wage <= 0) {
-      wageErr.textContent = 'Wage must be greater than 0';
+      wageErr.textContent = isAnnual ? 'Salary must be greater than 0' : 'Wage must be greater than 0';
       valid = false;
+    }
+
+    /* Convert annual salary to hourly wage */
+    if (valid && isAnnual && wage !== null) {
+      wage = wage / HOURS_PER_YEAR;
     }
 
     if (priceRaw.trim() === '') {
@@ -949,6 +1000,20 @@
   /* --- Events --- */
 
   renderPopularItems();
+
+  /* Wage mode toggle */
+  document.getElementById('wageToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || btn.classList.contains('active')) return;
+
+    document.querySelectorAll('.wage-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const isAnnual = btn.getAttribute('data-mode') === 'annual';
+    document.getElementById('wageLabel').textContent = isAnnual ? 'Annual salary' : 'Hourly wage';
+    document.getElementById('wage').placeholder = isAnnual ? '52,000' : '15.00';
+    document.getElementById('wageError').textContent = '';
+  });
 
   document.getElementById('calcForm').addEventListener('submit', (e) => {
     e.preventDefault();
